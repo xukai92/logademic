@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "npx shadow-cljs watch plugin",
+    "test": "npx shadow-cljs release test",
     "build": "npx shadow-cljs release plugin"
   }
 }
