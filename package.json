@@ -1,0 +1,23 @@
+{
+  "name": "logacademic",
+  "version": "0.0.1",
+  "description": "Logacademic contains a set of Logseq utilities for academics.",
+  "author": "Kai Xu (@xukai92)",
+  "license": "MIT",
+  "devDependencies": {
+    "shadow-cljs": "2.26.0"
+  },
+  "dependencies": {
+    "@logseq/libs": "^0.0.15"
+  },
+  "logseq": {
+    "id": "_ko7h05icl",
+    "title": "Logacademic",
+    "main": "index.html",
+    "icon": "icon.png"
+  },
+  "scripts": {
+    "dev": "npx shadow-cljs watch plugin",
+    "build": "npx shadow-cljs release plugin"
+  }
+}

@@ -1,0 +1,13 @@
+{:source-paths ["src/dev" "src/main" "src/test"]
+
+ :dependencies
+ []
+
+ :nrepl {:port 8702}
+
+ :builds
+ {:plugin {:target :browser
+           :output-dir "dist"
+           :modules {:main {:init-fn core/init}}
+           :dev {}
+           :release {:compiler-options {:optimizations :advanced}}}}}
