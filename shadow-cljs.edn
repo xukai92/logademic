@@ -12,6 +12,6 @@
            :dev {}
            :release {:compiler-options {:optimizations :advanced}}}
   :test {:target    :node-test
-          :output-to "out/node-test.js"
-          :ns-regexp "^test-"
-          :autorun   true}}}
+         :output-to "out/node-test.js"
+         :ns-regexp "^test-"
+         :autorun   true}}}
