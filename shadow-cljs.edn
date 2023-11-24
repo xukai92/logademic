@@ -1,7 +1,9 @@
 {:source-paths ["src/dev" "src/main" "src/test"]
 
  :dependencies
- []
+ [[lambdaisland/uri "1.16.134"]
+  [cljs-http "0.1.48"]
+  [hickory "0.7.1"]]
 
  :nrepl {:port 8702}
 
@@ -12,6 +14,7 @@
            :dev {}
            :release {:compiler-options {:optimizations :advanced}}}
   :test {:target    :node-test
-          :output-to "out/node-test.js"
-          :ns-regexp "^test-"
-          :autorun   true}}}
+         :output-to "out/node-test.js"
+         :ns-regexp "^test-"
+         :autorun   true
+         :devtools  {:repl-pprint true}}}}
