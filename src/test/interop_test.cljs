@@ -6,7 +6,7 @@
 
 (deftest main
   (async done
-         (go (let [x (<! "a")]
+         (go (let [x (str "a")]
                (is (some #(= x %) ["a" "b"]))))
          (done)))
 
