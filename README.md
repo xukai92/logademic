@@ -1,1 +1,1 @@
-# Logacademic
+# Logademic
