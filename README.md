@@ -14,4 +14,4 @@ Prerequisite
 - make sure `pnpm` is available globally, e.g. via `npm install -g pnpm`
 - make sure `bb` is installed; see https://babashka.org
 
-To develop, run `bb dev`.
+To develop, run `bb dev` from the root of this repo.
