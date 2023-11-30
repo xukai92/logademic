@@ -3,7 +3,10 @@
    [clojure.string :as string]
    [cljs.core.async :refer [go <!]]
    ["@logseq/libs"]
+   [interop-test] [link-test]
    [interop] [link]))
+
+(def dev-msg "dev log")
 
 (def plugin-settings
   [{:key "userName"
@@ -13,12 +16,17 @@
     :default nil}])
 
 (defn update-paper-link [uuid content]
-  (go
-    (let [url (string/trim content)
-          paper-title (<! (link/paper-title-of url))
-          format (<! (interop/get-current-format))
-          new-content (link/format-link paper-title url format)]
-      (<! (interop/update-block uuid new-content)))))
+  (go (let [raw-url (string/trim content)
+            host (link/host-of raw-url)]
+        (if (link/known-host? host)
+          (let [url (link/ensure-web-url raw-url)
+                paper-info (<! (link/paper-info-of url))
+                format (<! (interop/get-current-format))
+                new-content (link/format-link (:title paper-info) url format)]
+            (<! (interop/update-block uuid new-content))
+            (<! (interop/insert-block uuid (:abstract paper-info) #js{:focus false}))
+            (<! (interop/set-block-collapsed uuid #js{:flag true})))
+          (println (str dev-msg " | unknown host " host))))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js plugin-settings))
@@ -38,15 +46,8 @@
                     (update-paper-link (aget child-block "uuid") (aget child-block "content")))))))
   (let [user-name js/logseq.settings.userName]
     (js/logseq.App.showMsg (if (empty? user-name)
-                             "Hello from Logacademic!"
-                             (str "Hello " user-name "---Greeting from Logacademic!"))))
-  ;; dev funcs
-  (let [dev-msg "dev log"]
-    (go
-      (println (str dev-msg " | 0"))
-      (<! (interop/dev))
-      (<! (link/dev))
-      (println (str dev-msg " | 1")))))
+                             "Hello from Logademic!"
+                             (str "Hello " user-name "---Greeting from Logacademic!")))))
 
 (defn init []
   (-> (js/logseq.ready main)

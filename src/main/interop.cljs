@@ -10,23 +10,23 @@
 (defn get-user-format []
   (go (get (<! (get-user-configs)) "preferredFormat")))
 
-(defn get-current-page [] 
+(defn get-current-page []
   (go (<p! (js/logseq.Editor.getCurrentPage))))
 
 (defn get-current-format []
   (go (aget (<! (get-current-page)) "format")))
 
-(defn get-current-block [& args] 
+(defn get-current-block [& args]
   (go (<p! (apply js/logseq.Editor.getCurrentBlock args))))
 
 (defn update-block [& args]
   (go (<p! (apply js/logseq.Editor.updateBlock args))))
 
+(defn insert-block [& args]
+  (go (<p! (apply js/logseq.Editor.insertBlock args))))
+
+(defn set-block-collapsed [& args]
+  (go (<p! (apply js/logseq.Editor.setBlockCollapsed args))))
+
 (defn get-editing-block-content []
   (go (<p! (js/logseq.Editor.getEditingBlockContent))))
-
-;; dev
-(defn dev []
-  (go
-      (let [user-format (<! (interop/get-user-format))]
-        (println (str "user-format: " user-format)))))

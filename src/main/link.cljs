@@ -4,15 +4,19 @@
             [cljs.core.async :refer [go <!]]
             [cljs-http.client :as client]
             [hickory.core :refer [parse as-hickory]]
-            [hickory.select :refer [tag select]]))
+            [hickory.render :refer [hickory-to-html]]
+            [hickory.select :as s]))
 
 (defn host-of [url]
   (:host (uri url)))
 
+(defn known-host? [host]
+  (some #(= host %) ["arxiv.org" "openreview.net"]))
+
 (defn replacement-str-for [host]
   (cond
     (= host "arxiv.org") "abs"
-    (= host "openreview.net") "forum" 
+    (= host "openreview.net") "forum"
     :else nil))
 
 (defn ensure-web-url [url]
@@ -27,18 +31,33 @@
 
 ;; get the DOM tree of the fetched HTTP response given URL
 (defn get-dom-tree [url]
-  (go
-    (-> (<! (client/get url))
-        :body
-        parse
-        as-hickory)))
+  (go (-> (<! (client/get url))
+          :body
+          parse
+          as-hickory)))
 
 ;; get the title content
 (defn title-content-of [dom-tree]
-  (-> (select (tag :title) dom-tree)
+  (-> (s/select (s/tag :title) dom-tree)
       first
       :content
       first))
+
+;; get the title content
+(defn abstract-content-of [host dom-tree]
+  (cond
+    (= host "arxiv.org") (-> (s/select (s/class :abstract) dom-tree)
+                             first
+                             :content
+                             (nth 2)
+                             hickory-to-html)
+    (= host "openreview.net") (-> (s/select (s/and (s/tag :meta) 
+                                                   (s/attr :name #(= "citation_abstract" % ))) dom-tree)
+                                  first
+                                  :attrs
+                                  :content
+                                  hickory-to-html)
+    :else nil))
 
 ;; "XXX | OpenReview" -> "XXX"
 ;; "[1234.56789] XXX" -> "XXX"
@@ -48,19 +67,20 @@
     (= host "openreview.net") (string/replace title-content #"\s(\|\sOpenReview)$" "")
     :else nil))
 
-(defn paper-title-of [raw-url]
-  (go
-    (let [host (host-of raw-url)
-          url (ensure-web-url raw-url)
-          dom-tree (<! (get-dom-tree url))
-          title-content (title-content-of dom-tree)]
-      (clean-title-content host title-content))))
+(defn paper-info-of [url]
+  (go (let [host (host-of url)
+            dom-tree (<! (get-dom-tree url))
+            title-content (title-content-of dom-tree)
+            title (clean-title-content host title-content)
+            abstract (abstract-content-of host dom-tree)]
+        {:title title :abstract abstract})))
+
+(defn known-format? [format]
+  ;;(some #{format} ["markdown" "org"])) ;; alternative way that uses set as function
+  (some #(= format %) ["markdown" "org"]))
 
 (defn format-link [title link format]
-  (assert (contains? #{"markdown" "org"} format))
-    (cond
-        (= format "markdown") (str "[" title "](" link ")")
-        (= format "org") (str "[[" link "][" title "]]")))
-
-;; dev
-(defn dev [] (go))
+  (assert (known-format? format))
+  (cond
+    (= format "markdown") (str "[" title "](" link ")")
+    (= format "org") (str "[[" link "][" title "]]")))

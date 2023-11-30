@@ -25,3 +25,4 @@ pom.xml.asc
 
 dist/
 out/
+tmp/

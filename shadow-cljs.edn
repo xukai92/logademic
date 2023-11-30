@@ -3,18 +3,16 @@
  :dependencies
  [[lambdaisland/uri "1.16.134"]
   [cljs-http "0.1.48"]
-  [hickory "0.7.1"]]
+  [org.clj-commons/hickory "0.7.3"]]
 
  :nrepl {:port 8702}
 
  :builds
- {:plugin {:target :browser
-           :output-dir "dist"
-           :modules {:main {:init-fn core/init}}
-           :dev {}
-           :release {:compiler-options {:optimizations :advanced}}}
-  :test {:target    :node-test
-         :output-to "out/node-test.js"
-         :ns-regexp "^test-"
-         :autorun   true
-         :devtools  {:repl-pprint true}}}}
+ {:develop {:target :browser
+            :output-dir "dist"
+            :dev {}
+            :modules {:main {:init-fn core/init}}}
+  :release {:target :browser
+            :output-dir "dist"
+            :modules {:main {:init-fn core/init}}
+            :release {:compiler-options {:optimizations :advanced}}}}}
