@@ -15,7 +15,7 @@
                        query "what's 1 + 1? give me the answer only."
                        messages [{:role "user" :content query}]
                        model (interop/setting-of "model")
-                       stream (interop/setting-of "stream")
+                       stream false
                        response (<! (interop/chat-completions-create client
                                                                      messages
                                                                      model

@@ -2,9 +2,10 @@
   (:require
    [clojure.string :as string]
    [cljs.core.async :refer [go <!]]
-   ["@logseq/libs"]
+   ["@logseq/libs"] 
+   [interop] [link] [chat]
    [interop-test] [link-test] [chat-test]
-   [interop] [link] [chat]))
+   [cljs.test :refer-macros [run-tests]]))
 
 (def dev-msg "dev log")
 
@@ -148,7 +149,12 @@
   (let [user-name (interop/setting-of "userName")]
     (js/logseq.App.showMsg (if (empty? user-name)
                              "Hello from Logademic!"
-                             (str "Hello " user-name "---Greeting from Logacademic!")))))
+                             (str "Hello " user-name "---Greeting from Logacademic!"))))
+  
+  (enable-console-print!)
+  (run-tests 'interop-test)
+  (run-tests 'link-test)
+  (run-tests 'chat-test))
 
 (defn init []
   (-> (js/logseq.ready main)
