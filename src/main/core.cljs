@@ -82,25 +82,25 @@
                                (map (fn [msg] (str (:role msg) ":\n" (:content msg))) messages))
           "\n" "---")))
   (go (let [response (interop/chat-completions-create client messages model stream)
-              uuid (aget new-block "uuid")]
-          (if stream
-            (let [start (.now js/Date)
-                  max-stream-elapsed (interop/setting-of "maxStreamElapsed")]
-              (loop [content (aget new-block "content")]
-                (let [chunk (<! response)
-                      elapsed (/ (- (.now js/Date) start) 1000)
-                      finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
-                  (if (< elapsed max-stream-elapsed)
-                    (when (nil? finish-reason)
-                      (let [delta-content (chat/get-delta-content chunk)
-                            new-content (str content delta-content)]
-                        (<! (interop/update-block uuid new-content #js{:focus false}))
-                        (recur new-content)))
-                    (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
-            (let [content (aget new-block "content")
-                  message-content (chat/get-message-content (<! response))
-                  new-content (str content message-content)]
-              (<! (interop/update-block uuid new-content #js{:focus false})))))))
+            uuid (aget new-block "uuid")]
+        (if stream
+          (let [start (.now js/Date)
+                max-stream-elapsed (interop/setting-of "maxStreamElapsed")]
+            (loop [content (aget new-block "content")]
+              (let [chunk (<! response)
+                    elapsed (/ (- (.now js/Date) start) 1000)]
+                (if (< elapsed max-stream-elapsed)
+                  (let [delta-content (chat/get-delta-content chunk)
+                        new-content (str content delta-content)
+                        finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
+                    (<! (interop/update-block uuid new-content #js{:focus false}))
+                    (when (nil? finish-reason) 
+                      (recur new-content)))
+                  (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
+          (let [content (aget new-block "content")
+                message-content (chat/get-message-content (<! response))
+                new-content (str content message-content)]
+            (<! (interop/update-block uuid new-content #js{:focus false})))))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js settings-schema))
@@ -179,7 +179,7 @@
                       new-content (chat/prepend-property-str format model "\n")
                       parent-uuid (aget parent-block "uuid")
                       new-block (<! (interop/insert-block parent-uuid new-content #js{:focus false}))
-                      new-uuid (aget new-block "uuid")] 
+                      new-uuid (aget new-block "uuid")]
                   (<! (chat-block client messages model stream new-block))
                   (when (interop/setting-of "autoNewBlock")
                     (interop/insert-block new-uuid "" #js{:sibling true}))))))
