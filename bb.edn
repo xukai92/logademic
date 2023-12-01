@@ -3,7 +3,7 @@
          :init     ()
          clean     (do (doseq [tree ["node_modules" ".shadow-cljs"]]
                          (fs/delete-tree tree))
-                       (shell "pnpm install"))
+                       (shell "npm install"))
          dev       {:depends [clean]
                     :task (do (fs/delete-tree "dist")
                               (shell "./node_modules/.bin/shadow-cljs watch develop"))}
