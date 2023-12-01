@@ -33,9 +33,7 @@
     :else nil))
 
 (defn get-message-content [response]
-  (-> response
-      (get "choices")
-      first
-      (get "message")
-      (get "content"))
   (get-in response ["choices" 0 "message" "content"]))
+
+(defn get-delta-content [chunk]
+  (get-in chunk ["choices" 0 "delta" "content"]))

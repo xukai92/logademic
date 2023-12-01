@@ -1,6 +1,6 @@
 (ns interop
   (:require
-   [cljs.core.async :refer [chan put! go <!]]
+   [cljs.core.async :refer [chan put! go go-loop <!]]
    [cljs.core.async.interop :refer-macros [<p!]]
    ["@logseq/libs"]
    ["openai" :refer [OpenAI]]))
@@ -34,6 +34,12 @@
 (defn insert-block [& args]
   (go (<p! (apply js/logseq.Editor.insertBlock args))))
 
+(defn get-block-properties [& args]
+  (go (<p! (apply js/logseq.Editor.getBlockProperties args))))
+
+(defn get-block-property [& args]
+  (go (<p! (apply js/logseq.Editor.getBlockProperty args))))
+
 (defn upsert-block-property [& args]
   (go (<p! (apply js/logseq.Editor.upsertBlockProperty args))))
 
@@ -59,7 +65,14 @@
                       :model model
                       :stream stream})
         (.then (fn [response]
-                 (put! channel (js->clj response))))
+                 (if stream
+                   (let [async-gen (.iterator response)]
+                     (go-loop []
+                       (let [chunk (js->clj (<p! (.next async-gen)))]
+                         (when-not (get chunk "done")
+                           (put! channel (get chunk "value"))
+                           (recur)))))
+                   (put! channel (js->clj response)))))
         (.catch (fn [error]
                   (put! channel error))))
     channel))

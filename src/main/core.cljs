@@ -31,6 +31,11 @@
     :title "Stream response"
     :description "Do you want to read response in stream mode?"
     :default false}
+   {:key "maxStreamElapsed"
+    :type "number"
+    :title "Maximum stream wait time (s)"
+    :description "The maximum time (in seconds) to wait when reading stream."
+    :default 60}
    {:key "systemMessage"
     :type "string"
     :title "System message"
@@ -75,20 +80,24 @@
           (clojure.string/join "\n\n"
                                (map (fn [msg] (str (:role msg) ":\n" (:content msg))) messages))
           "\n" "---")))
-  (go (let [response (<! (interop/chat-completions-create client
-                                                          messages
-                                                          model
-                                                          stream))
-            uuid (aget new-block "uuid")
-            content (aget new-block "content")]
+  (go (let [response (interop/chat-completions-create client messages model stream)
+            uuid (aget new-block "uuid")]
         (if stream
-          #_(doseq [chunk response]
-            (let [message-content-delta (get-in chunk [:choices 0 :delta :content] "")
-                  new-content (str content message-content-delta)
-                  content new-content]
-              (<! (interop/update-block uuid new-content #js{:focus false}))))
-          ()
-          (let [message-content (chat/get-message-content response)
+          (let [start (.now js/Date)
+                max-stream-elapsed (interop/setting-of "maxStreamElapsed")]
+            (loop [content (aget new-block "content")]
+              (let [chunk (<! response)
+                    elapsed (/ (- (.now js/Date) start) 1000)
+                    finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
+                (if (< elapsed max-stream-elapsed)
+                  (when (nil? finish-reason)
+                    (let [delta-content (chat/get-delta-content chunk)
+                          new-content (str content delta-content)]
+                      (<! (interop/update-block uuid new-content #js{:focus false}))
+                      (recur new-content)))
+                  (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
+          (let [content (aget new-block "content")
+                message-content (chat/get-message-content (<! response))
                 new-content (str content message-content)]
             (<! (interop/update-block uuid new-content #js{:focus false})))))))
 
@@ -116,7 +125,7 @@
                (println (<! (interop/get-current-page)))
                (let [base-url (interop/setting-of "baseURL")
                      api-key (interop/setting-of "apiKey")
-                     client (interop/new-client base-url api-key) 
+                     client (interop/new-client base-url api-key)
                      system-message (interop/setting-of "systemMessage")
                      current-format (<! (interop/get-current-format))
                      user-format (<! (interop/get-user-format))
@@ -134,7 +143,7 @@
                      new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
                  (<! (chat-block client messages model stream new-block))
                  (when (interop/setting-of "autoNewBlock")
-                   (interop/insert-block current-uuid ""))))))
+                   (interop/insert-block current-uuid "" #js{:sibling true}))))))
 
   (let [user-name (interop/setting-of "userName")]
     (js/logseq.App.showMsg (if (empty? user-name)

@@ -5,7 +5,6 @@
    [interop] [chat]))
 
 (deftest main
-
   (async done
          (go (let [system-message (interop/setting-of "systemMessage")
                    system-message-markdown (chat/augment-system-message system-message "markdown")
