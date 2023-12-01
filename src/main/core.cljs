@@ -123,7 +123,6 @@
   (js/logseq.Editor.registerSlashCommand
    "a-ask" (fn []
              (go
-               (println (<! (interop/get-current-page)))
                (let [base-url (interop/setting-of "baseURL")
                      api-key (interop/setting-of "apiKey")
                      client (interop/new-client base-url api-key)
@@ -145,6 +144,14 @@
                  (<! (chat-block client messages model stream new-block))
                  (when (interop/setting-of "autoNewBlock")
                    (interop/insert-block current-uuid "" #js{:sibling true}))))))
+  
+  (js/logseq.Editor.registerSlashCommand
+   "a-dev" (fn []
+             (go
+               (let [current-block (<! (interop/get-current-block))
+                     current-uuid (aget current-block "uuid")]
+                 (println (<! (interop/get-block-properties current-uuid)))
+                 (println (<! (interop/get-block-property current-uuid "chatseq-model")))))))
 
   (let [user-name (interop/setting-of "userName")]
     (js/logseq.App.showMsg (if (empty? user-name)

@@ -1,3 +1,4 @@
+;; TODO update with (js->clj ... :keywordize-keys true)
 (ns interop
   (:require
    [cljs.core.async :refer [chan put! go go-loop <!]]
@@ -35,7 +36,7 @@
   (go (<p! (apply js/logseq.Editor.insertBlock args))))
 
 (defn get-block-properties [& args]
-  (go (<p! (apply js/logseq.Editor.getBlockProperties args))))
+  (go (js->clj (<p! (apply js/logseq.Editor.getBlockProperties args)))))
 
 (defn get-block-property [& args]
   (go (<p! (apply js/logseq.Editor.getBlockProperty args))))
