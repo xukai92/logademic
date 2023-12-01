@@ -8,8 +8,8 @@
     "shadow-cljs": "2.26.0"
   },
   "dependencies": {
-    "@logseq/libs": "^0.0.15",
-    "openai": "^4.20.1"
+    "@logseq/libs": "0.0.15",
+    "openai": "4.20.1"
   },
   "logseq": {
     "title": "Logademic",
