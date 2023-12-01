@@ -24,10 +24,14 @@
   (go (<p! (js/logseq.Editor.getCurrentPage))))
 
 (defn get-current-format []
-  (go (aget (<! (get-current-page)) "format")))
+  (go (let [current-page (<! (get-current-page))]
+        (if current-page (aget current-page "format") nil))))
 
 (defn get-current-block [& args]
   (go (<p! (apply js/logseq.Editor.getCurrentBlock args))))
+
+(defn get-block [& args]
+  (go (<p! (apply js/logseq.Editor.getBlock args))))
 
 (defn update-block [& args]
   (go (<p! (apply js/logseq.Editor.updateBlock args))))

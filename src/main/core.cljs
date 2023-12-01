@@ -1,8 +1,8 @@
 (ns core
   (:require
    [clojure.string :as string]
-   [cljs.core.async :refer [go <!]]
-   ["@logseq/libs"] 
+   [cljs.core.async :as async :refer [chan put! close! go <!]]
+   ["@logseq/libs"]
    [interop] [link] [chat]
    [interop-test] [link-test] [chat-test]
    [cljs.test :refer-macros [run-tests]]))
@@ -82,25 +82,25 @@
                                (map (fn [msg] (str (:role msg) ":\n" (:content msg))) messages))
           "\n" "---")))
   (go (let [response (interop/chat-completions-create client messages model stream)
-            uuid (aget new-block "uuid")]
-        (if stream
-          (let [start (.now js/Date)
-                max-stream-elapsed (interop/setting-of "maxStreamElapsed")]
-            (loop [content (aget new-block "content")]
-              (let [chunk (<! response)
-                    elapsed (/ (- (.now js/Date) start) 1000)
-                    finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
-                (if (< elapsed max-stream-elapsed)
-                  (when (nil? finish-reason)
-                    (let [delta-content (chat/get-delta-content chunk)
-                          new-content (str content delta-content)]
-                      (<! (interop/update-block uuid new-content #js{:focus false}))
-                      (recur new-content)))
-                  (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
-          (let [content (aget new-block "content")
-                message-content (chat/get-message-content (<! response))
-                new-content (str content message-content)]
-            (<! (interop/update-block uuid new-content #js{:focus false})))))))
+              uuid (aget new-block "uuid")]
+          (if stream
+            (let [start (.now js/Date)
+                  max-stream-elapsed (interop/setting-of "maxStreamElapsed")]
+              (loop [content (aget new-block "content")]
+                (let [chunk (<! response)
+                      elapsed (/ (- (.now js/Date) start) 1000)
+                      finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
+                  (if (< elapsed max-stream-elapsed)
+                    (when (nil? finish-reason)
+                      (let [delta-content (chat/get-delta-content chunk)
+                            new-content (str content delta-content)]
+                        (<! (interop/update-block uuid new-content #js{:focus false}))
+                        (recur new-content)))
+                    (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
+            (let [content (aget new-block "content")
+                  message-content (chat/get-message-content (<! response))
+                  new-content (str content message-content)]
+              (<! (interop/update-block uuid new-content #js{:focus false})))))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js settings-schema))
@@ -138,13 +138,52 @@
                                {:role "user" :content current-content}]
                      model (interop/setting-of "model")
                      stream (interop/setting-of "stream")
-                     property-str (chat/make-property-str format model)
-                     new-content (str property-str "\n")
+                     new-content (chat/prepend-property-str format model "\n")
                      new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
                  (<! (chat-block client messages model stream new-block))
                  (when (interop/setting-of "autoNewBlock")
                    (interop/insert-block current-uuid "" #js{:sibling true}))))))
-  
+  (js/logseq.Editor.registerSlashCommand
+   "a-chat" (fn []
+              (go
+                (let [base-url (interop/setting-of "baseURL")
+                      api-key (interop/setting-of "apiKey")
+                      client (interop/new-client base-url api-key)
+                      system-message (interop/setting-of "systemMessage")
+                      current-format (<! (interop/get-current-format))
+                      user-format (<! (interop/get-user-format))
+                      format (if current-format current-format user-format)
+                      augmented-system-message (chat/augment-system-message system-message format)
+                      current-block (<! (interop/get-current-block))
+                      current-uuid (aget current-block "uuid")
+                      current-content (<! (interop/get-editing-block-content))
+                      parent-id (aget (aget current-block "parent") "id")
+                      parent-block (<! (interop/get-block parent-id #js{:includeChildren true}))
+                      parent-content (aget parent-block "content")
+                      parent-messages [{:role "system" :content augmented-system-message}
+                                       {:role "user" :content parent-content}]
+                      child-messages (map (fn [child-block-js]
+                                            (let [child-block (js->clj child-block-js :keywordize-keys true)
+                                                  uuid (:uuid child-block)
+                                                  content (:content child-block)
+                                                  property-value (:chatseqModel (:properties child-block))]
+                                              (if property-value
+                                                {:role "assistant" :content (chat/remove-property-str format content)}
+                                                (if (= uuid current-uuid)
+                                                  {:role "user" :content current-content}
+                                                  {:role "user" :content content}))))
+                                          (aget parent-block "children"))
+                      messages (concat parent-messages child-messages)
+                      model (interop/setting-of "model")
+                      stream (interop/setting-of "stream")
+                      new-content (chat/prepend-property-str format model "\n")
+                      parent-uuid (aget parent-block "uuid")
+                      new-block (<! (interop/insert-block parent-uuid new-content #js{:focus false}))
+                      new-uuid (aget new-block "uuid")] 
+                  (<! (chat-block client messages model stream new-block))
+                  (when (interop/setting-of "autoNewBlock")
+                    (interop/insert-block new-uuid "" #js{:sibling true}))))))
+
   (js/logseq.Editor.registerSlashCommand
    "a-dev" (fn []
              (go
@@ -157,7 +196,7 @@
     (js/logseq.App.showMsg (if (empty? user-name)
                              "Hello from Logademic!"
                              (str "Hello " user-name "---Greeting from Logacademic!"))))
-  
+
   (enable-console-print!)
   (run-tests 'interop-test)
   (run-tests 'link-test)

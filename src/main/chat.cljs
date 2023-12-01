@@ -1,4 +1,5 @@
-(ns chat)
+(ns chat
+  (:require [clojure.string :as string]))
 
 (def format-instruction-markdown
   "Please assist by reading and responding in Markdown syntax used by Logseq's blocks, with the following additional notes:
@@ -26,11 +27,19 @@
       (str system-message " " format-instruction)
       format-instruction)))
 
-(defn make-property-str [format model]
-  (cond
-    (= format "markdown") (str "chatseq-model::" " " model)
-    (= format "org") (str ":PROPERTIES:" "\n" ":chatseq-model:" " " model "\n" ":END:")
-    :else nil))
+(defn prepend-property-str [format model s]
+  (let [property-str (cond
+                       (= format "markdown") (str "chatseq-model::" " " model)
+                       (= format "org") (str ":PROPERTIES:" "\n" ":chatseq-model:" " " model "\n" ":END:")
+                       :else nil)]
+    (str property-str s)))
+
+(defn remove-property-str [format s]
+  (let [pattern (cond
+                  (= format "markdown") #"^chatseq-model\:\: .+\n"
+                  (= format "org") #"^\:PROPERTIES\:\n\:chatseq-model\: .+\n\:END\:\n"
+                  :else nil)]
+    (if pattern (string/replace s pattern "") s)))
 
 (defn get-message-content [response]
   (get-in response ["choices" 0 "message" "content"]))
