@@ -46,3 +46,13 @@
 
 (defn get-delta-content [chunk]
   (get-in chunk ["choices" 0 "delta" "content"]))
+
+(defn child-block-to-message [child-block format current-uuid current-content]
+  (let [uuid (get child-block "uuid")
+        content (get child-block "content")
+        property-value (get-in child-block ["properties" "chatseqModel"])]
+    (if property-value
+      {:role "assistant" :content (chat/remove-property-str format content)}
+      (if (= uuid current-uuid)
+        {:role "user" :content current-content}
+        {:role "user" :content content}))))

@@ -13,24 +13,24 @@
   [{:key "baseURL"
     :type "string"
     :title "API URL"
-    :description "URL for any OpenAI-compatible API is supported (defaults to OpenAI's API)."
+    :description "The URL for an OpenAI-compatible API (defaults to OpenAI's API)."
     :default nil}
    {:key "apiKey"
     :type "string"
     :title "API Key"
-    :description "Authentication key; for OpenAI's see https://platform.openai.com/api-keys."
+    :description "Authentication key; for OpenAI's, see https://platform.openai.com/api-keys."
     :default nil}
    {:key "model"
     :type "enum"
     :title "Model name"
-    :description "The name of the model to use"
+    :description "The name of the model to use."
     :enumPicker "radio"
     :enumChoices ["gpt-3.5-turbo-1106" "gpt-4-1106-preview" "gpt-4-vision-preview"]
     :default "gpt-3.5-turbo-1106"}
    {:key "stream"
     :type "boolean"
     :title "Stream response"
-    :description "Do you want to read response in stream mode?"
+    :description "Read response in stream mode?"
     :default false}
    {:key "maxStreamElapsed"
     :type "number"
@@ -45,21 +45,21 @@
    {:key "autoNewBlock"
     :type "boolean"
     :title "Automatically add new block"
-    :description "Do you want to automatically start in a new block after the bot response?"
+    :description "Automatically start in a new block after the bot response?"
     :default true}
    {:key "debugPrompts"
     :type "boolean"
     :title "Debug prompts"
-    :description "Do you wanna print prompts in console (CMD-OPT-I) for debugging purposes?"
+    :description "Print prompts in console (CMD-OPT-I) for debugging purposes?"
     :default false}
    ;;
    {:key "userName"
     :type "string"
     :title "User name"
-    :description "Your preferred name for Logademic to say hello"
+    :description "Your preferred name for Logademic to say hello."
     :default nil}])
 
-(defn link-paper [uuid content]
+(defn link-paper [uuid content include-rating]
   (go (let [raw-url (string/trim content)
             host (link/host-of raw-url)]
         (if (link/known-host? host)
@@ -73,6 +73,16 @@
             (<! (interop/insert-block uuid (:abstract paper-info) #js{:focus false}))
             (<! (interop/set-block-collapsed uuid #js{:flag true})))
           (println (str dev-msg " | unknown host " host))))))
+(defn a-link [include-rating]
+  (go (let [current-block (<! (interop/get-current-block))
+            current-uuid (aget current-block "uuid")
+            current-content (<! (interop/get-editing-block-content))]
+        (link-paper current-uuid current-content include-rating))))
+(defn a-links [include-rating]
+  (go (let [current-block (<! (interop/get-current-block #js{:includeChildren true}))
+            child-blcoks (aget current-block "children")]
+        (doseq [child-block child-blcoks]
+          (link-paper (aget child-block "uuid") (aget child-block "content") include-rating)))))
 
 (defn chat-block [client messages model stream new-block]
   (when (interop/setting-of "debugPrompts")
@@ -94,95 +104,77 @@
                         new-content (str content delta-content)
                         finish-reason (get-in chunk ["choices" 0 "finish_reason"])]
                     (<! (interop/update-block uuid new-content #js{:focus false}))
-                    (when (nil? finish-reason) 
+                    (when (nil? finish-reason)
                       (recur new-content)))
                   (js/logseq.App.showMsg "Time out when reading response stream!" "error")))))
           (let [content (aget new-block "content")
                 message-content (chat/get-message-content (<! response))
                 new-content (str content message-content)]
             (<! (interop/update-block uuid new-content #js{:focus false})))))))
+(defn a-ask []
+  (go (let [base-url (interop/setting-of "baseURL")
+            api-key (interop/setting-of "apiKey")
+            client (interop/new-client base-url api-key)
+            system-message (interop/setting-of "systemMessage")
+            current-format (<! (interop/get-current-format))
+            user-format (<! (interop/get-user-format))
+            format (if current-format current-format user-format)
+            augmented-system-message (chat/augment-system-message system-message format)
+            current-block (<! (interop/get-current-block))
+            current-uuid (aget current-block "uuid")
+            current-content (<! (interop/get-editing-block-content))
+            messages [{:role "system" :content augmented-system-message}
+                      {:role "user" :content current-content}]
+            model (interop/setting-of "model")
+            stream (interop/setting-of "stream")
+            new-content (chat/prepend-property-str format model "\n")
+            new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
+        (<! (chat-block client messages model stream new-block))
+        (when (interop/setting-of "autoNewBlock")
+          (interop/insert-block current-uuid "" #js{:sibling true})))))
+(defn a-chat []
+  (go (let [base-url (interop/setting-of "baseURL")
+            api-key (interop/setting-of "apiKey")
+            client (interop/new-client base-url api-key)
+            system-message (interop/setting-of "systemMessage")
+            current-format (<! (interop/get-current-format))
+            user-format (<! (interop/get-user-format))
+            format (if current-format current-format user-format)
+            augmented-system-message (chat/augment-system-message system-message format)
+            current-block (<! (interop/get-current-block))
+            current-uuid (aget current-block "uuid")
+            current-content (<! (interop/get-editing-block-content))
+            parent-id (aget (aget current-block "parent") "id")
+            parent-block (<! (interop/get-block parent-id #js{:includeChildren true}))
+            parent-content (aget parent-block "content")
+            parent-messages [{:role "system" :content augmented-system-message}
+                             {:role "user" :content parent-content}]
+            child-messages (map #(chat/child-block-to-message % format current-uuid current-content)
+                                (map js->clj 
+                                     (aget parent-block "children")))
+            messages (concat parent-messages child-messages)
+            model (interop/setting-of "model")
+            stream (interop/setting-of "stream")
+            new-content (chat/prepend-property-str format model "\n")
+            parent-uuid (aget parent-block "uuid")
+            new-block (<! (interop/insert-block parent-uuid new-content #js{:focus false}))
+            new-uuid (aget new-block "uuid")]
+        (<! (chat-block client messages model stream new-block))
+        (when (interop/setting-of "autoNewBlock")
+          (interop/insert-block new-uuid "" #js{:sibling true})))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js settings-schema))
 
   (js/logseq.Editor.registerSlashCommand
-   "a-link" (fn []
-              (go
-                (let [current-block (<! (interop/get-current-block))
-                      current-uuid (aget current-block "uuid")
-                      current-content (<! (interop/get-editing-block-content))]
-                  (link-paper current-uuid current-content)))))
+   "a-link" (fn [] (a-link false)))
   (js/logseq.Editor.registerSlashCommand
-   "a-links" (fn []
-               (go
-                 (let [current-block (<! (interop/get-current-block #js{:includeChildren true}))
-                       child-blcoks (aget current-block "children")]
-                   (doseq [child-block child-blcoks]
-                     (link-paper (aget child-block "uuid") (aget child-block "content")))))))
+   "a-links" (fn [] (a-links false)))
 
   (js/logseq.Editor.registerSlashCommand
-   "a-ask" (fn []
-             (go
-               (let [base-url (interop/setting-of "baseURL")
-                     api-key (interop/setting-of "apiKey")
-                     client (interop/new-client base-url api-key)
-                     system-message (interop/setting-of "systemMessage")
-                     current-format (<! (interop/get-current-format))
-                     user-format (<! (interop/get-user-format))
-                     format (if current-format current-format user-format)
-                     augmented-system-message (chat/augment-system-message system-message format)
-                     current-block (<! (interop/get-current-block))
-                     current-uuid (aget current-block "uuid")
-                     current-content (<! (interop/get-editing-block-content))
-                     messages [{:role "system" :content augmented-system-message}
-                               {:role "user" :content current-content}]
-                     model (interop/setting-of "model")
-                     stream (interop/setting-of "stream")
-                     new-content (chat/prepend-property-str format model "\n")
-                     new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
-                 (<! (chat-block client messages model stream new-block))
-                 (when (interop/setting-of "autoNewBlock")
-                   (interop/insert-block current-uuid "" #js{:sibling true}))))))
+   "a-ask" a-ask)
   (js/logseq.Editor.registerSlashCommand
-   "a-chat" (fn []
-              (go
-                (let [base-url (interop/setting-of "baseURL")
-                      api-key (interop/setting-of "apiKey")
-                      client (interop/new-client base-url api-key)
-                      system-message (interop/setting-of "systemMessage")
-                      current-format (<! (interop/get-current-format))
-                      user-format (<! (interop/get-user-format))
-                      format (if current-format current-format user-format)
-                      augmented-system-message (chat/augment-system-message system-message format)
-                      current-block (<! (interop/get-current-block))
-                      current-uuid (aget current-block "uuid")
-                      current-content (<! (interop/get-editing-block-content))
-                      parent-id (aget (aget current-block "parent") "id")
-                      parent-block (<! (interop/get-block parent-id #js{:includeChildren true}))
-                      parent-content (aget parent-block "content")
-                      parent-messages [{:role "system" :content augmented-system-message}
-                                       {:role "user" :content parent-content}]
-                      child-messages (map (fn [child-block-js]
-                                            (let [child-block (js->clj child-block-js :keywordize-keys true)
-                                                  uuid (:uuid child-block)
-                                                  content (:content child-block)
-                                                  property-value (:chatseqModel (:properties child-block))]
-                                              (if property-value
-                                                {:role "assistant" :content (chat/remove-property-str format content)}
-                                                (if (= uuid current-uuid)
-                                                  {:role "user" :content current-content}
-                                                  {:role "user" :content content}))))
-                                          (aget parent-block "children"))
-                      messages (concat parent-messages child-messages)
-                      model (interop/setting-of "model")
-                      stream (interop/setting-of "stream")
-                      new-content (chat/prepend-property-str format model "\n")
-                      parent-uuid (aget parent-block "uuid")
-                      new-block (<! (interop/insert-block parent-uuid new-content #js{:focus false}))
-                      new-uuid (aget new-block "uuid")]
-                  (<! (chat-block client messages model stream new-block))
-                  (when (interop/setting-of "autoNewBlock")
-                    (interop/insert-block new-uuid "" #js{:sibling true}))))))
+   "a-chat" a-chat)
 
   (js/logseq.Editor.registerSlashCommand
    "a-dev" (fn []
