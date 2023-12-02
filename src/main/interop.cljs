@@ -1,4 +1,3 @@
-;; TODO update with (js->clj ... :keywordize-keys true)
 (ns interop
   (:require
    [cljs.core.async :refer [chan put! go go-loop <!]]
@@ -29,6 +28,9 @@
 
 (defn get-current-block [& args]
   (go (<p! (apply js/logseq.Editor.getCurrentBlock args))))
+
+(defn get-next-sibling-block [& args]
+ (go (<p! (apply js/logseq.Editor.getNextSiblingBlock args))))
 
 (defn get-block [& args]
   (go (<p! (apply js/logseq.Editor.getBlock args))))
@@ -81,3 +83,5 @@
         (.catch (fn [error]
                   (put! channel error))))
     channel))
+
+;; LangChain

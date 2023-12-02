@@ -130,7 +130,7 @@
             new-content (chat/prepend-property-str format model "\n")
             new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
         (<! (chat-block client messages model stream new-block))
-        (when (interop/setting-of "autoNewBlock")
+        (when (and (interop/setting-of "autoNewBlock") (nil? (<! (interop/get-next-sibling-block current-uuid))))
           (interop/insert-block current-uuid "" #js{:sibling true})))))
 (defn a-chat []
   (go (let [base-url (interop/setting-of "baseURL")
@@ -160,7 +160,7 @@
             new-block (<! (interop/insert-block parent-uuid new-content #js{:focus false}))
             new-uuid (aget new-block "uuid")]
         (<! (chat-block client messages model stream new-block))
-        (when (interop/setting-of "autoNewBlock")
+        (when (and (interop/setting-of "autoNewBlock") (nil? (<! (interop/get-next-sibling-block new-uuid))))
           (interop/insert-block new-uuid "" #js{:sibling true})))))
 
 (defn main []
