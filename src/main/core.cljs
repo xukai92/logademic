@@ -25,8 +25,8 @@
     :title "Model name"
     :description "The name of the model to use."
     :enumPicker "radio"
-    :enumChoices ["gpt-3.5-turbo-1106" "gpt-4-1106-preview" "gpt-4-vision-preview"]
-    :default "gpt-3.5-turbo-1106"}
+    :enumChoices ["gpt-3.5-turbo" "gpt-4-turbo-preview" "gpt-4-vision-preview"]
+    :default "gpt-3.5-turbo"}
    {:key "stream"
     :type "boolean"
     :title "Stream response"
@@ -175,6 +175,10 @@
    "a-ask" a-ask)
   (js/logseq.Editor.registerSlashCommand
    "a-chat" a-chat)
+  ;; (js/logseq.App.registerCommandPalette
+  ;;  #js{:key "a-ask" :label "a-ask"} a-ask)
+  ;; (js/logseq.App.registerCommandPalette
+  ;;  #js{:key "a-chat" :label "a-chat"} a-chat)
 
   (js/logseq.Editor.registerSlashCommand
    "a-dev" (fn []

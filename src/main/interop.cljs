@@ -59,7 +59,8 @@
 ;; OpenAI
 
 (defn new-client [base-url api-key]
-  (let [options {:baseURL base-url
+  (let [base-url (if (empty? base-url) nil base-url)
+        options {:baseURL base-url
                  :apiKey api-key
                  :dangerouslyAllowBrowser true}]
     (new OpenAI (clj->js options))))
