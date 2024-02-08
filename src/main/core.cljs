@@ -25,8 +25,13 @@
     :title "Model name"
     :description "The name of the model to use."
     :enumPicker "radio"
-    :enumChoices ["gpt-3.5-turbo" "gpt-4-turbo-preview" "gpt-4-vision-preview"]
+    :enumChoices ["gpt-3.5-turbo" "gpt-4-turbo-preview" "gpt-4-vision-preview", "custom-model"]
     :default "gpt-3.5-turbo"}
+   {:key "customModel"
+    :type "string"
+    :title "Custom model name"
+    :description "The name of the custom model to use."
+    :default nil}
    {:key "stream"
     :type "boolean"
     :title "Stream response"
@@ -111,6 +116,10 @@
                 message-content (chat/get-message-content (<! response))
                 new-content (str content message-content)]
             (<! (interop/update-block uuid new-content #js{:focus false})))))))
+(defn custom-model-or-model []
+  (let [custom-model (interop/setting-of "customModel")
+        model (interop/setting-of "model")]
+        (if (= model "custom-model") custom-model model)))
 (defn a-ask []
   (go (let [base-url (interop/setting-of "baseURL")
             api-key (interop/setting-of "apiKey")
@@ -125,7 +134,7 @@
             current-content (<! (interop/get-editing-block-content))
             messages [{:role "system" :content augmented-system-message}
                       {:role "user" :content current-content}]
-            model (interop/setting-of "model")
+            model (custom-model-or-model)
             stream (interop/setting-of "stream")
             new-content (chat/prepend-property-str format model "\n")
             new-block (<! (interop/insert-block current-uuid new-content #js{:focus false}))]
@@ -153,7 +162,7 @@
                                 (map js->clj 
                                      (aget parent-block "children")))
             messages (concat parent-messages child-messages)
-            model (interop/setting-of "model")
+            model (custom-model-or-model)
             stream (interop/setting-of "stream")
             new-content (chat/prepend-property-str format model "\n")
             parent-uuid (aget parent-block "uuid")
