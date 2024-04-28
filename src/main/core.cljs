@@ -25,7 +25,7 @@
     :title "Model name"
     :description "The name of the model to use."
     :enumPicker "radio"
-    :enumChoices ["gpt-3.5-turbo" "gpt-4-turbo-preview" "gpt-4-vision-preview", "custom-model"]
+    :enumChoices ["gpt-3.5-turbo" "gpt-4-turbo" "gpt-4-vision-preview", "custom-model"]
     :default "gpt-3.5-turbo"}
    {:key "customModel"
     :type "string"
