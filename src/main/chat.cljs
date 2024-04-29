@@ -4,8 +4,9 @@
 (def format-instruction-markdown
   "Please assist by reading and responding in Markdown syntax used by Logseq's blocks, with the following additional notes:
 * Use `*` for lists instead of `-`.
-* Avoid using headings.
-* Avoid using nested lists and sub-items.")
+* Avoid using headings like `#`, `##`, etc.
+* Avoid nesting lists.
+* Avoid using sub-items.")
 
 (def format-instruction-org
   "Please assist by reading and responding in Org mode syntax used by Logseq's blocks, with the following additional notes:
@@ -15,7 +16,8 @@
   #+END_SRC
 - Note that bold uses single ~*~ to quote,, i.e. ~*bold*~ instead of ~**bold**~.
 - Avoid using headings.
-- Avoid using nested lists and sub-items.
+- Avoid nesting lists.
+* Avoid using sub-items.
 - Avoid quoting the entire response in a greater block.")
 
 (defn augment-system-message [system-message format]
