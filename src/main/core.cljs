@@ -184,10 +184,12 @@
    "a-ask" a-ask)
   (js/logseq.Editor.registerSlashCommand
    "a-chat" a-chat)
+  ;; get a random to-do item for next
   ;; (js/logseq.App.registerCommandPalette
-  ;;  #js{:key "a-ask" :label "a-ask"} a-ask)
-  ;; (js/logseq.App.registerCommandPalette
-  ;;  #js{:key "a-chat" :label "a-chat"} a-chat)
+  ;;  #js{:key "a-next" :label "a-next"} a-next)
+  ;; summarize the block (recursively)
+  ;; (js/logseq.Editor.registerBlockContextMenuItem
+  ;;  "a-summarize" a-summarize)
 
   (js/logseq.Editor.registerSlashCommand
    "a-dev" (fn []
